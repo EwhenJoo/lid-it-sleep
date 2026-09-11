@@ -1,0 +1,11 @@
+backups/
+reports/
+*.html
+*.evtx
+*.etl
+*.pow
+*.zip
+*.log
+test-output/
+.DS_Store
+Thumbs.db
