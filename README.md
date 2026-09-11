@@ -37,10 +37,10 @@
 
 ```powershell
 # 默认模式：只读检查
-.\ClamshellSleep.ps1
+.\LidItSleep.ps1
 
 # 查看最近一天的 12 条电源事件
-.\ClamshellSleep.ps1 -Days 1 -MaxEvents 12
+.\LidItSleep.ps1 -Days 1 -MaxEvents 12
 ```
 
 若系统阻止执行下载的脚本，请先审阅源码，并遵循所在组织的执行策略。工具不会更改脚本执行策略。
@@ -50,15 +50,15 @@
 以下示例将接电和电池供电时的合盖动作都设为睡眠。先预览，再按需应用：
 
 ```powershell
-.\ClamshellSleep.ps1 -Mode Apply -BatteryAction Sleep -PluggedInAction Sleep -WhatIf
-.\ClamshellSleep.ps1 -Mode Apply -BatteryAction Sleep -PluggedInAction Sleep
+.\LidItSleep.ps1 -Mode Apply -BatteryAction Sleep -PluggedInAction Sleep -WhatIf
+.\LidItSleep.ps1 -Mode Apply -BatteryAction Sleep -PluggedInAction Sleep
 ```
 
 可选配置：使用电池时合盖进入休眠，接电时保留睡眠动作。
 
 ```powershell
-.\ClamshellSleep.ps1 -Mode Apply -BatteryAction Hibernate -PluggedInAction Sleep -WhatIf
-.\ClamshellSleep.ps1 -Mode Apply -BatteryAction Hibernate -PluggedInAction Sleep
+.\LidItSleep.ps1 -Mode Apply -BatteryAction Hibernate -PluggedInAction Sleep -WhatIf
+.\LidItSleep.ps1 -Mode Apply -BatteryAction Hibernate -PluggedInAction Sleep
 ```
 
 如果接电合盖设为睡眠会中断外接显示器的使用，可选择 `-PluggedInAction DoNothing`。该选项会改变接电合盖行为，并可能使输入抑制不再生效；请结合[微软关于输入抑制的说明](https://learn.microsoft.com/en-us/windows-hardware/customize/power-settings/power-controls-enableinputsuppression)评估。
@@ -68,8 +68,8 @@
 每次实际修改前，工具会将原合盖策略保存为 `backups/` 中的唯一 JSON 文件，并打印路径。用实际路径替换下面的占位文件名：
 
 ```powershell
-.\ClamshellSleep.ps1 -Mode Restore -BackupPath .\backups\lid-policy-YOUR-BACKUP-ID.json -WhatIf
-.\ClamshellSleep.ps1 -Mode Restore -BackupPath .\backups\lid-policy-YOUR-BACKUP-ID.json
+.\LidItSleep.ps1 -Mode Restore -BackupPath .\backups\lid-policy-YOUR-BACKUP-ID.json -WhatIf
+.\LidItSleep.ps1 -Mode Restore -BackupPath .\backups\lid-policy-YOUR-BACKUP-ID.json
 ```
 
 恢复前需手动选中备份对应的电源方案。恢复操作也会备份当前值；若写入失败，工具会尝试回滚并保留备份。若目标配置与当前值一致，则不写入也不生成备份。
@@ -128,7 +128,7 @@ powercfg /sleepstudy /output sleepstudy.html
 ### 测试与验证
 
 ```powershell
-.\Test-ClamshellSleep.ps1
+.\Test-LidItSleep.ps1
 ```
 
 20 项自动化测试使用虚构事件和模拟电源接口，覆盖事件解释、校验、预览、备份、恢复、重复应用及失败回滚，不修改真实电源设置。
@@ -191,10 +191,10 @@ Download and extract the source, then open PowerShell in the project directory:
 
 ```powershell
 # Default mode: read-only inspection
-.\ClamshellSleep.ps1
+.\LidItSleep.ps1
 
 # Inspect the latest 12 power events within one day
-.\ClamshellSleep.ps1 -Days 1 -MaxEvents 12
+.\LidItSleep.ps1 -Days 1 -MaxEvents 12
 ```
 
 If Windows blocks downloaded scripts, review the source and follow your organization's execution policy. The tool does not modify script execution policy.
@@ -204,15 +204,15 @@ If Windows blocks downloaded scripts, review the source and follow your organiza
 This example selects Sleep for both external power and battery. Preview first, then apply as needed:
 
 ```powershell
-.\ClamshellSleep.ps1 -Mode Apply -BatteryAction Sleep -PluggedInAction Sleep -WhatIf
-.\ClamshellSleep.ps1 -Mode Apply -BatteryAction Sleep -PluggedInAction Sleep
+.\LidItSleep.ps1 -Mode Apply -BatteryAction Sleep -PluggedInAction Sleep -WhatIf
+.\LidItSleep.ps1 -Mode Apply -BatteryAction Sleep -PluggedInAction Sleep
 ```
 
 An alternative selects Hibernate on battery while retaining Sleep on external power:
 
 ```powershell
-.\ClamshellSleep.ps1 -Mode Apply -BatteryAction Hibernate -PluggedInAction Sleep -WhatIf
-.\ClamshellSleep.ps1 -Mode Apply -BatteryAction Hibernate -PluggedInAction Sleep
+.\LidItSleep.ps1 -Mode Apply -BatteryAction Hibernate -PluggedInAction Sleep -WhatIf
+.\LidItSleep.ps1 -Mode Apply -BatteryAction Hibernate -PluggedInAction Sleep
 ```
 
 If Sleep on external power interrupts external-display use, select `-PluggedInAction DoNothing`. This changes AC lid behavior and may disengage input suppression; consider [Microsoft's input-suppression documentation](https://learn.microsoft.com/en-us/windows-hardware/customize/power-settings/power-controls-enableinputsuppression).
@@ -222,8 +222,8 @@ If Sleep on external power interrupts external-display use, select `-PluggedInAc
 Before each actual change, the tool saves the previous lid policy to a unique JSON file in `backups/` and prints its path. Substitute that path for the placeholder below:
 
 ```powershell
-.\ClamshellSleep.ps1 -Mode Restore -BackupPath .\backups\lid-policy-YOUR-BACKUP-ID.json -WhatIf
-.\ClamshellSleep.ps1 -Mode Restore -BackupPath .\backups\lid-policy-YOUR-BACKUP-ID.json
+.\LidItSleep.ps1 -Mode Restore -BackupPath .\backups\lid-policy-YOUR-BACKUP-ID.json -WhatIf
+.\LidItSleep.ps1 -Mode Restore -BackupPath .\backups\lid-policy-YOUR-BACKUP-ID.json
 ```
 
 Manually select the backup's original power plan before restoring. Restore also backs up the current values. If a write fails, the tool attempts rollback and retains the backup. If the requested values already match, no write or backup occurs.
@@ -282,7 +282,7 @@ It does not monitor Thunderbolt or USB-C disconnect events. Windows documents re
 ### Testing and validation
 
 ```powershell
-.\Test-ClamshellSleep.ps1
+.\Test-LidItSleep.ps1
 ```
 
 The 20 automated tests use synthetic events and mocked power interfaces. They cover event interpretation, validation, previews, backups, restore, idempotence and rollback without modifying real power settings.
@@ -312,4 +312,3 @@ Licensed under the [MIT License](LICENSE).
 - [powercfg commands](https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options)
 
 [简体中文 ↑](#简体中文) · [English ↑](#english)
-
