@@ -1,12 +1,17 @@
 # lid-it-sleep
 
-**Windows 合盖电源策略配置与睡眠诊断工具。**
+**Windows 合盖电源策略配置与睡眠诊断工具。**  
+**Windows lid power-policy configuration and sleep diagnostics.**
 
-简体中文 | [English](README.en.md) · [MIT License](LICENSE)
+[简体中文](#简体中文) | [English](#english) · [MIT License](LICENSE)
+
+## 简体中文
+
+[English ↓](#english)
 
 `lid-it-sleep` 面向合盖使用外接显示器、断开连接后携带笔记本的场景，提供电源策略检查、合盖动作配置和睡眠事件分析。通过区分配置值、熄屏会话与实际睡眠记录，帮助用户验证设备是否按预期进入睡眠或休眠。
 
-## 功能
+### 功能
 
 - **只读检查**：查看可用睡眠状态、活动电源方案的合盖策略及近期电源事件。
 - **策略配置**：分别设置电池和外接电源供电时的合盖动作。
@@ -14,7 +19,7 @@
 - **事件分析**：区分熄屏、现代待机、休眠请求、热保护和异常重启。
 - **本地运行**：无需服务或常驻进程，不包含遥测或联网功能。
 
-## 环境要求
+### 环境要求
 
 | 项目 | 要求或验证状态 |
 | --- | --- |
@@ -26,7 +31,7 @@
 
 睡眠类型由设备固件和 Windows 决定。现代待机使用 S0 低功耗空闲，休眠使用 S4。工具不会将 S0 转换为传统 S3 睡眠。
 
-## 快速开始
+### 快速开始
 
 下载并解压源码，在项目目录打开 PowerShell：
 
@@ -40,7 +45,7 @@
 
 若系统阻止执行下载的脚本，请先审阅源码，并遵循所在组织的执行策略。工具不会更改脚本执行策略。
 
-### 配置合盖动作
+#### 配置合盖动作
 
 以下示例将接电和电池供电时的合盖动作都设为睡眠。先预览，再按需应用：
 
@@ -58,7 +63,7 @@
 
 如果接电合盖设为睡眠会中断外接显示器的使用，可选择 `-PluggedInAction DoNothing`。该选项会改变接电合盖行为，并可能使输入抑制不再生效；请结合[微软关于输入抑制的说明](https://learn.microsoft.com/en-us/windows-hardware/customize/power-settings/power-controls-enableinputsuppression)评估。
 
-### 恢复原设置
+#### 恢复原设置
 
 每次实际修改前，工具会将原合盖策略保存为 `backups/` 中的唯一 JSON 文件，并打印路径。用实际路径替换下面的占位文件名：
 
@@ -69,7 +74,7 @@
 
 恢复前需手动选中备份对应的电源方案。恢复操作也会备份当前值；若写入失败，工具会尝试回滚并保留备份。若目标配置与当前值一致，则不写入也不生成备份。
 
-## 参数
+### 参数
 
 | 参数 | 可选值 | 默认值 | 说明 |
 | --- | --- | --- | --- |
@@ -81,7 +86,7 @@
 | `-MaxEvents` | 1–200 | 24 | 返回的最大事件数 |
 | `-WhatIf` | 开关 | 关闭 | 预览配置或恢复，不写入设置或备份 |
 
-## 事件解读
+### 事件解读
 
 工具读取 `Microsoft-Windows-Kernel-Power` 的结构化 XML 字段，不依赖事件描述的显示语言。时间采用本机时区，事件按新到旧排列。
 
@@ -99,7 +104,7 @@ Windows 11 的现代待机可在检测到过量耗电后限制大多数唤醒来
 
 `-MaxEvents` 可能截断会话；单条事件不能替代完整的睡眠时段分析。
 
-## 工作流验证
+### 工作流验证
 
 1. 在通风桌面上，合盖连接外接显示器，确认工作状态正常。
 2. 按日常流程断开连接，并确认是否同时切换到电池供电。
@@ -114,13 +119,13 @@ powercfg /sleepstudy /output sleepstudy.html
 
 报告可能包含设备、应用和活动时间信息，分享前请审阅并脱敏。明显发热的设备应先散热，再在通风条件下测试。
 
-## 适用范围
+### 适用范围
 
 工具仅修改活动电源方案的两项合盖动作，不调整电源按键、超时、网络、唤醒设备、BIOS 或安全设置。
 
 它不监听雷电或 USB-C 拔线事件。Windows 文档描述了部分合盖拔电源场景下对电池合盖策略的重新评估，但实际结果取决于硬件、驱动、供电状态和系统策略。已合盖后拔线是否触发预期的睡眠或休眠，需要在目标设备上验证。组织策略或厂商软件也可能覆盖已保存的设置。
 
-## 测试与验证
+### 测试与验证
 
 ```powershell
 .\Test-ClamshellSleep.ps1
@@ -138,16 +143,173 @@ powercfg /sleepstudy /output sleepstudy.html
 
 该观察时读取到的接电和电池合盖动作均为 `Sleep`。单次观察不构成通用兼容性或故障修复保证，也不能证明行为改善由特定配置引起。仓库不包含原始个人日志。
 
-## 贡献与许可
+### 贡献与许可
 
 欢迎提交经过脱敏的复现步骤和代码改进。提交前请阅读[贡献说明](CONTRIBUTING.md)。
 
 本项目采用 [MIT License](LICENSE)。
 
-## 参考资料
+### 参考资料
 
 - [合盖动作的取值](https://learn.microsoft.com/en-us/windows-hardware/customize/power-settings/power-button-and-lid-settings-lid-switch-close-action)
 - [输入抑制与合盖拔电源行为](https://learn.microsoft.com/en-us/windows-hardware/customize/power-settings/power-controls-enableinputsuppression)
 - [现代待机唤醒与耗电保护](https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/modern-standby-wake-sources)
 - [SleepStudy](https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/modern-standby-sleepstudy)
 - [powercfg 命令](https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options)
+
+---
+
+## English
+
+[简体中文 ↑](#简体中文)
+
+`lid-it-sleep` supports using a laptop with its lid closed and an external display, then disconnecting it for transport. It provides power-policy inspection, lid-action configuration and sleep-event analysis. By separating stored settings, screen-off sessions and reported sleep, it helps users verify actual device behavior.
+
+### Features
+
+- **Read-only inspection:** available sleep states, the active plan's lid policy and recent power events.
+- **Policy configuration:** separate lid actions for battery and external power.
+- **Reversible changes:** `-WhatIf` preview, backups, readback verification and rollback on failure.
+- **Event interpretation:** distinguish screen-off, modern standby, hibernation requests, thermal protection and unexpected restarts.
+- **Local operation:** no service, background process, telemetry or network functionality.
+
+### Requirements
+
+| Component | Requirement or verification status |
+| --- | --- |
+| Operating system | Windows; read-only functionality verified on Windows 11 25H2 |
+| PowerShell 7 | Runtime verification and 20 mocked tests passed on 7.6.5 |
+| Windows PowerShell 5.1 | Syntax checks passed; runtime verification pending |
+| Write permissions | Depend on system permissions and organization policy; elevation may be required |
+| Hibernation | Must already be supported and enabled before selecting `Hibernate` |
+
+Sleep states are determined by device firmware and Windows. Modern standby uses S0 low-power idle; hibernation uses S4. The tool does not convert S0 into traditional S3 sleep.
+
+### Quick start
+
+Download and extract the source, then open PowerShell in the project directory:
+
+```powershell
+# Default mode: read-only inspection
+.\ClamshellSleep.ps1
+
+# Inspect the latest 12 power events within one day
+.\ClamshellSleep.ps1 -Days 1 -MaxEvents 12
+```
+
+If Windows blocks downloaded scripts, review the source and follow your organization's execution policy. The tool does not modify script execution policy.
+
+#### Configure lid actions
+
+This example selects Sleep for both external power and battery. Preview first, then apply as needed:
+
+```powershell
+.\ClamshellSleep.ps1 -Mode Apply -BatteryAction Sleep -PluggedInAction Sleep -WhatIf
+.\ClamshellSleep.ps1 -Mode Apply -BatteryAction Sleep -PluggedInAction Sleep
+```
+
+An alternative selects Hibernate on battery while retaining Sleep on external power:
+
+```powershell
+.\ClamshellSleep.ps1 -Mode Apply -BatteryAction Hibernate -PluggedInAction Sleep -WhatIf
+.\ClamshellSleep.ps1 -Mode Apply -BatteryAction Hibernate -PluggedInAction Sleep
+```
+
+If Sleep on external power interrupts external-display use, select `-PluggedInAction DoNothing`. This changes AC lid behavior and may disengage input suppression; consider [Microsoft's input-suppression documentation](https://learn.microsoft.com/en-us/windows-hardware/customize/power-settings/power-controls-enableinputsuppression).
+
+#### Restore previous settings
+
+Before each actual change, the tool saves the previous lid policy to a unique JSON file in `backups/` and prints its path. Substitute that path for the placeholder below:
+
+```powershell
+.\ClamshellSleep.ps1 -Mode Restore -BackupPath .\backups\lid-policy-YOUR-BACKUP-ID.json -WhatIf
+.\ClamshellSleep.ps1 -Mode Restore -BackupPath .\backups\lid-policy-YOUR-BACKUP-ID.json
+```
+
+Manually select the backup's original power plan before restoring. Restore also backs up the current values. If a write fails, the tool attempts rollback and retains the backup. If the requested values already match, no write or backup occurs.
+
+### Parameters
+
+| Parameter | Values | Default | Description |
+| --- | --- | --- | --- |
+| `-Mode` | `Inspect`, `Apply`, `Restore` | `Inspect` | Inspect, configure or restore |
+| `-BatteryAction` | `Sleep`, `Hibernate` | `Sleep` | Battery lid action in Apply mode |
+| `-PluggedInAction` | `Sleep`, `DoNothing` | `Sleep` | AC lid action in Apply mode |
+| `-BackupPath` | JSON file path | None | Required in Restore mode |
+| `-Days` | 1–90 | 7 | Event lookback period |
+| `-MaxEvents` | 1–200 | 24 | Maximum number of returned events |
+| `-WhatIf` | Switch | Off | Preview configuration or restore without writing settings or backups |
+
+### Event interpretation
+
+The tool reads structured XML fields from `Microsoft-Windows-Kernel-Power`, independently of localized event descriptions. Times use the local time zone; events are shown newest first.
+
+| Event or field | Meaning | Interpretation boundary |
+| --- | --- | --- |
+| 506 | Modern standby session begins | Does not independently prove low-power sleep |
+| 507, `SleepEntered=true` | The session reports having entered sleep | SleepSeconds is the session's reported sleep duration |
+| 507, `SleepEntered=false` | The session does not report entering sleep | Distinguish from screen-off activity; a missing field is unknown |
+| 42, `TargetState=5` | S4 hibernation requested | 5 is a Windows enum value; a request does not prove completion |
+| 88 | Thermal hibernation event | Analyze separately from normal standby |
+| 41 | Unexpected restart | Does not establish the cause |
+| 506/507, reason 55 | Standby energy-budget policy event | Not independent evidence of overheating or a screen-on wake |
+
+Windows 11 modern standby can restrict most wake sources after detecting excessive drain. Adjacent exit/entry records at the same time may reflect a standby policy transition and should be interpreted alongside other fields. [Microsoft: modern standby wake sources](https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/modern-standby-wake-sources)
+
+`-MaxEvents` can truncate sessions. Individual events do not replace a complete sleep-session analysis.
+
+### Workflow validation
+
+1. On a ventilated desk, close the lid while using an external display and confirm normal operation.
+2. Disconnect as usual and check whether this also switches the laptop to battery power.
+3. Wait approximately one minute, open the lid and briefly press the power button if needed to check resume behavior.
+4. Run the read-only inspection and review power states, event times and resume reasons.
+
+For longer power-consumption analysis, generate a SleepStudy report in an elevated terminal:
+
+```powershell
+powercfg /sleepstudy /output sleepstudy.html
+```
+
+Reports may contain device, application and activity information; review and redact them before sharing. Allow an unusually hot device to cool before further testing in a ventilated location.
+
+### Scope
+
+The tool changes only the active power plan's two lid-action values. It does not configure power buttons, timeouts, networking, wake devices, BIOS or security settings.
+
+It does not monitor Thunderbolt or USB-C disconnect events. Windows documents re-evaluation of the battery lid policy in certain closed-lid unplug scenarios, but actual results depend on hardware, drivers, power sources and system policy. Whether unplugging with an already closed lid triggers the intended sleep or hibernation must be tested on the target device. Organization policies or vendor utilities may override saved settings.
+
+### Testing and validation
+
+```powershell
+.\Test-ClamshellSleep.ps1
+```
+
+The 20 automated tests use synthetic events and mocked power interfaces. They cover event interpretation, validation, previews, backups, restore, idempotence and rollback without modifying real power settings.
+
+| Validation | Current result |
+| --- | --- |
+| PowerShell 7 tests | All 20 passed |
+| Windows PowerShell 5.1 | Syntax checks passed; local execution policy blocked runtime testing |
+| Live inspection | Verified on one Windows 11 25H2 device |
+| Configuration writes and restore | Mocked tests passed; real writes have not been verified |
+| Hardware sleep behavior | One approximately 39-minute modern standby observation resumed on lid opening with about 0.44 percentage points of battery loss |
+
+The observed device had `Sleep` stored for both AC and battery lid actions. One observation is not a universal compatibility or repair guarantee and does not establish that a particular configuration caused an improvement. Original personal logs are not included.
+
+### Contributing and license
+
+Redacted reproduction steps and code improvements are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting.
+
+Licensed under the [MIT License](LICENSE).
+
+### References
+
+- [Lid action values](https://learn.microsoft.com/en-us/windows-hardware/customize/power-settings/power-button-and-lid-settings-lid-switch-close-action)
+- [Input suppression and closed-lid unplug behavior](https://learn.microsoft.com/en-us/windows-hardware/customize/power-settings/power-controls-enableinputsuppression)
+- [Modern standby wake sources and drain protection](https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/modern-standby-wake-sources)
+- [SleepStudy](https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/modern-standby-sleepstudy)
+- [powercfg commands](https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options)
+
+[简体中文 ↑](#简体中文) · [English ↑](#english)
+
