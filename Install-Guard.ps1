@@ -39,15 +39,11 @@ if ($Mode -eq 'Status') {
     Get-Content -LiteralPath (Join-Path $installDirectory 'state\guard.log') -Tail 12 -ErrorAction SilentlyContinue
     return
 }
-if (-not $PSCmdlet.ShouldProcess($installDirectory, "$Mode per-user lid/battery hibernation guard and logon task")) { return }
+if (-not $PSCmdlet.ShouldProcess($installDirectory, "$Mode per-user lid/battery sleep guard and logon task")) { return }
 if ($Mode -eq 'Install') {
-    $hibernateAvailable = & {
-        . (Join-Path $PSScriptRoot 'LidItSleep.ps1')
-        Initialize-PowerApi
-        [LidItSleep.Native]::IsPwrHibernateAllowed()
-    }
-    if (-not $hibernateAvailable) { throw 'Enable Windows hibernation before installing the guard.' }
     $built = & (Join-Path $PSScriptRoot 'Build-Guard.ps1')
+    $accessCheck = Start-Process -FilePath $built -ArgumentList '--check-sleep-access' -WindowStyle Hidden -PassThru -Wait
+    if ($accessCheck.ExitCode -ne 0) { throw 'Sleep request privilege is unavailable. Guard was not installed.' }
 }
 $existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if ($existing) { Stop-ScheduledTask -TaskName $taskName }
@@ -68,7 +64,7 @@ $action = New-ScheduledTaskAction -Execute $physicalExe -Argument "--delay $Dela
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $identity.Name
 $principal = New-ScheduledTaskPrincipal -UserId $identity.Name -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
-$null = Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "LidItSleep: hibernate after $DelaySeconds seconds of confirmed closed lid and battery power; no external-display dependency." -Force
+$null = Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "LidItSleep: request Sleep after $DelaySeconds seconds of confirmed closed lid and battery power; no hibernation fallback." -Force
 Start-ScheduledTask -TaskName $taskName
 $started = $false
 for ($attempt = 0; $attempt -lt 10; $attempt++) {

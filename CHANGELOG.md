@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- Correct the guard action to Sleep: call `SetSuspendState(false, false, false)` instead of requesting S4. No hibernation fallback or hibernation prerequisite.
+- Enable and restore the calling process's sleep-request privilege, verify access in the installed user process, and keep the notification window responsive while the API executes.
+- Expose `Action=Sleep` in status and explicit sleep messages in logs. Retain the 10-second delay, cancellation and bounded retries.
+- Add four fake-API tests for sleep-only arguments, single dispatch and error propagation: 30 guard tests plus 20 existing tests pass without suspending the machine.
+
 ## 0.2.0
 
 - Add an opt-in per-user background guard for closed-lid battery operation, including unplugging while the lid is already closed.

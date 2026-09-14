@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace LidItSleep
@@ -21,9 +22,6 @@ namespace LidItSleep
         internal static extern IntPtr RegisterPowerSettingNotification(IntPtr recipient, ref Guid setting, uint flags);
         [DllImport("user32.dll")]
         internal static extern bool UnregisterPowerSettingNotification(IntPtr handle);
-        [DllImport("powrprof.dll")]
-        [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool IsPwrHibernateAllowed();
     }
 
     internal sealed class GuardWindow : Form
@@ -39,7 +37,7 @@ namespace LidItSleep
         private readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
         private bool? closed, ac;
         private double lastTick, lastStatus;
-        private Process request;
+        private Task<bool> request;
 
         public GuardWindow(bool observe, double seconds, int delay, string directory)
         {
@@ -48,11 +46,16 @@ namespace LidItSleep
             policy = new GuardPolicy(delay);
             stateDirectory = directory;
             Directory.CreateDirectory(directory);
+            if (!observeOnly)
+            {
+                SleepRequest.CheckAccess();
+                Log("Sleep request privilege verified in guard process (no suspend requested)");
+            }
             ShowInTaskbar = false;
             RegisterLid();
             sourceRegistration = GuardNative.RegisterPowerSettingNotification(Handle, ref sourceGuid, 0);
             if (sourceRegistration == IntPtr.Zero) throw new System.ComponentModel.Win32Exception();
-            Log("Started mode=" + (observeOnly ? "observe" : "protect") + "; delay=" + delay + "s");
+            Log("Started mode=" + (observeOnly ? "observe" : "protect") + "; action=Sleep; delay=" + delay + "s");
             timer.Interval = 1000;
             timer.Tick += Tick;
             timer.Start();
@@ -128,12 +131,12 @@ namespace LidItSleep
             if (currentAc != ac) { ac = currentAc; Log("AC=" + State(ac)); WriteStatus(); }
             if (request != null)
             {
-                if (!request.HasExited) return;
-                int exitCode = request.ExitCode;
-                request.Dispose();
+                if (!request.IsCompleted) return;
+                bool accepted = !request.IsFaulted && request.Result;
+                string detail = request.IsFaulted ? request.Exception.GetBaseException().Message : accepted.ToString();
                 request = null;
-                Log("Hibernate command exit=" + exitCode + " (acceptance is not proof of S4 entry)");
-                if (exitCode != 0) policy.RequestFailed(now);
+                Log("Sleep API result=" + detail + " (acceptance is not proof of low-power sleep)");
+                if (!accepted) policy.RequestFailed(now);
                 WriteStatus();
             }
             double previousPending = policy.PendingSince;
@@ -147,19 +150,16 @@ namespace LidItSleep
                     policy.Observe(dispatchAc, closed, now);
                     return;
                 }
-                if (observeOnly) Log("WOULD HIBERNATE: stable battery + closed lid (observe mode)");
+                if (observeOnly) Log("WOULD SLEEP: stable battery + closed lid (observe mode)");
                 else
                 {
                     try
                     {
-                        if (!GuardNative.IsPwrHibernateAllowed()) throw new InvalidOperationException("S4 hibernation is unavailable");
-                        Log("REQUEST HIBERNATE: stable battery + closed lid; attempt=" + policy.Attempts);
-                        request = Process.Start(new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "shutdown.exe"), "/h")
-                        {
-                            UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden
-                        });
+                        Log("REQUEST SLEEP: stable battery + closed lid; attempt=" + policy.Attempts);
+                        // Keep the notification window responsive while the power API waits for resume.
+                        request = Task.Factory.StartNew<bool>(SleepRequest.Request);
                     }
-                    catch (Exception error) { Log("Hibernate request failed: " + error.Message); policy.RequestFailed(now); }
+                    catch (Exception error) { Log("Sleep request failed: " + error.Message); policy.RequestFailed(now); }
                 }
                 WriteStatus();
             }
@@ -186,7 +186,7 @@ namespace LidItSleep
         {
             lastStatus = clock.Elapsed.TotalSeconds;
             File.WriteAllText(Path.Combine(stateDirectory, "status.txt"),
-                "Version=0.2.0\r\nUpdated=" + DateTimeOffset.Now.ToString("o") +
+                "Version=0.2.1\r\nAction=Sleep\r\nUpdated=" + DateTimeOffset.Now.ToString("o") +
                 "\r\nPID=" + Process.GetCurrentProcess().Id + "\r\nMode=" + (observeOnly ? "observe" : "protect") +
                 "\r\nAC=" + State(ac) + "\r\nLidClosed=" + State(closed) +
                 "\r\nCountdown=" + (policy.PendingSince >= 0) + "\r\nLatched=" + policy.Latched +
@@ -207,7 +207,7 @@ namespace LidItSleep
         [STAThread]
         private static int Main(string[] args)
         {
-            bool observe = false;
+            bool observe = false, checkAccess = false;
             int delay = 10, seconds = 0;
             string directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LidItSleep", "state");
             try
@@ -215,12 +215,14 @@ namespace LidItSleep
                 for (int i = 0; i < args.Length; i++)
                 {
                     if (args[i] == "--observe") observe = true;
+                    else if (args[i] == "--check-sleep-access") checkAccess = true;
                     else if (args[i] == "--seconds") seconds = int.Parse(args[++i]);
                     else if (args[i] == "--delay") delay = int.Parse(args[++i]);
                     else if (args[i] == "--state-dir") directory = args[++i];
                     else throw new ArgumentException("Unknown argument " + args[i]);
                 }
                 if (seconds < 0 || (seconds > 0 && !observe)) throw new ArgumentException("--seconds requires --observe");
+                if (checkAccess) return SleepRequest.CheckAccess() ? 0 : 1;
                 bool created;
                 using (Mutex mutex = new Mutex(true, @"Local\LidItSleep.Guard" + (observe ? ".Observe" : ""), out created))
                 {

@@ -2,7 +2,7 @@ using System;
 
 namespace LidItSleep
 {
-    // Pure decision logic. Unknown values cancel the countdown, never authorize hibernation.
+    // Pure decision logic. Unknown values cancel the countdown, never authorize sleep.
     public sealed class GuardPolicy
     {
         public readonly double DelaySeconds;

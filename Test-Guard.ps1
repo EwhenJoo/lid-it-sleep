@@ -1,6 +1,7 @@
 #Requires -Version 5.1
 $ErrorActionPreference = 'Stop'
 Add-Type -Path (Join-Path $PSScriptRoot 'GuardPolicy.cs')
+Add-Type -Path (Join-Path $PSScriptRoot 'SleepRequest.cs')
 $count = 0
 function Check($Condition, $Label) {
     if (-not $Condition) { throw "FAIL: $Label" }
@@ -9,10 +10,10 @@ function Check($Condition, $Label) {
 }
 function New-Policy { New-Object LidItSleep.GuardPolicy 10 }
 $g = New-Policy
-Check (-not $g.Observe($true,$true,0)) 'Docked closed lid does not hibernate'
+Check (-not $g.Observe($true,$true,0)) 'Docked closed lid does not sleep'
 Check (-not $g.Observe($false,$true,1)) 'Unplug starts grace period'
 Check (-not $g.Observe($false,$true,10)) 'Does not trigger before full delay'
-Check ($g.Observe($false,$true,11)) 'Closed-lid unplug requests hibernation at deadline'
+Check ($g.Observe($false,$true,11)) 'Closed-lid unplug requests sleep at deadline'
 Check (-not $g.Observe($false,$true,100)) 'No duplicate request or resume loop'
 Check ($g.Attempts -eq 1) 'Exactly one attempt in unchanged interval'
 $null = $g.Observe($true,$true,101)
@@ -65,4 +66,22 @@ Check ($g.Attempts -eq 0 -and -not $g.Latched) 'Last-moment sensor change cancel
 $null = $g.Observe($null,$true,11)
 $null = $g.Observe($false,$true,12)
 Check ($g.Observe($false,$true,22)) 'Cancelled dispatch can retry after fresh valid observations'
-Write-Host "All $count guard policy tests passed. No hibernation requested."
+$script:apiCalls = 0
+$script:apiArguments = @()
+$fakeApi = [LidItSleep.SleepRequest+SuspendApi] {
+    param($hibernate,$force,$disableWake)
+    $script:apiCalls++
+    $script:apiArguments = @($hibernate,$force,$disableWake)
+    return $true
+}
+$accepted = [LidItSleep.SleepRequest]::Invoke($fakeApi)
+Check (-not $script:apiArguments[0] -and -not $script:apiArguments[1] -and -not $script:apiArguments[2]) 'Sleep API explicitly disables hibernation and preserves wake events'
+Check ($accepted -and $script:apiCalls -eq 1) 'Sleep request invokes the API exactly once'
+$script:apiCalls = 0
+$failureApi = [LidItSleep.SleepRequest+SuspendApi] { param($h,$f,$w); $script:apiCalls++; return $false }
+Check (-not [LidItSleep.SleepRequest]::Invoke($failureApi) -and $script:apiCalls -eq 1) 'API rejection propagates without fallback to hibernation'
+$errorApi = [LidItSleep.SleepRequest+SuspendApi] { param($h,$f,$w); throw 'Simulated power API error' }
+$thrown = $false
+try { [void][LidItSleep.SleepRequest]::Invoke($errorApi) } catch { $thrown = $true }
+Check $thrown 'Power API exceptions propagate for bounded retry'
+Write-Host "All $count guard tests passed. No sleep or hibernation requested."

@@ -1,7 +1,7 @@
 # lid-it-sleep
 
-**Windows 合盖拔电源自动休眠、电源策略配置与睡眠诊断。**  
-**Closed-lid unplug hibernation guard, lid power policies and sleep diagnostics for Windows.**
+**Windows 合盖拔电源自动睡眠、电源策略配置与睡眠诊断。**  
+**Closed-lid unplug sleep guard, lid power policies and sleep diagnostics for Windows.**
 
 [简体中文](#简体中文) | [English](#english) · [MIT License](LICENSE)
 
@@ -17,7 +17,7 @@
 - **策略配置**：分别设置电池和外接电源供电时的合盖动作。
 - **可恢复修改**：支持 `-WhatIf` 预览、修改前备份、写入后校验和失败回滚。
 - **事件分析**：区分熄屏、现代待机、休眠请求、热保护和异常重启。
-- **拔电源保护（可选安装）**：合盖且电池供电持续 10 秒后主动请求休眠，无需再次开合盖子。
+- **拔电源保护（可选安装）**：合盖且电池供电持续 10 秒后主动请求睡眠，无需再次开合盖子。
 - **本地运行**：检查工具运行后退出；保护器安装后随用户登录常驻，不包含遥测或联网功能。
 
 ### 环境要求
@@ -46,17 +46,17 @@
 
 安装使用 Windows 自带的 .NET Framework 4.x 编译器，无需下载依赖。若创建计划任务被拒绝，请在同一 Windows 账户的管理员 PowerShell 中运行安装命令。任务本身以该用户的普通权限运行，不使用 SYSTEM，也不改变执行策略。安装器会解析真实文件路径，以兼容打包终端的目录重定向，并验证任务与进程均已启动。若目录由终端应用管理，卸载该终端后应重新安装保护器。
 
-保护器直接接收 Windows 盖子状态通知，每秒复核电源状态。在确认**电池供电且合盖持续 10 秒**后执行 `shutdown.exe /h`，不强制关闭应用。开盖、重新接电或传感器状态未知都会取消倒计时。开盖用电池、合盖接电均不会触发。启动时已经合盖用电池、用电池时再次合盖也会受到保护。
+保护器直接接收 Windows 盖子状态通知，每秒复核电源状态。在确认**电池供电且合盖持续 10 秒**后调用 `SetSuspendState(false, false, false)` 主动请求睡眠，不请求休眠、不禁用唤醒事件，也不以休眠作为失败后的替代动作。开盖、重新接电或传感器状态未知都会取消倒计时。开盖用电池、合盖接电均不会触发。启动时已经合盖用电池、用电池时再次合盖也会受到保护。
 
-外接显示器状态不参与判断，因此不会因其断开状态迟报而漏掉本场景。这也意味着：**合盖使用外屏但只有电池供电时同样会休眠**；若另有充电器维持接电，单独拔视频线不会触发。
+外接显示器状态不参与判断，因此不会因其断开状态迟报而漏掉本场景。这也意味着：**合盖使用外屏但只有电池供电时同样会睡眠**；若另有充电器维持接电，单独拔视频线不会触发。
 
-日志位于 `%LOCALAPPDATA%\LidItSleep\state\guard.log`，实时状态位于同目录 `status.txt`。日志会轮转。保护器退出后状态文件会保留，因此需结合任务状态、PID 和 `Updated` 时间确认仍在运行。无人登录或用户已注销时不运行；S4 必须预先可用。Windows 若先进入睡眠，普通用户后台进程可能暂停，保护器不会唤醒电脑来强制转入 S4；它用于处理仍在运行却未睡眠的情况。传感器未知时不会猜测合盖。系统挂死、驱动未报告真实盖子状态或拒绝休眠时，软件无法保证进入 S4；最多进行三次失败重试，每次至少间隔 60 秒。命令返回成功也不等于已验证休眠完成。
+日志位于 `%LOCALAPPDATA%\LidItSleep\state\guard.log`，实时状态位于同目录 `status.txt`。日志会轮转。保护器退出后状态文件会保留，因此需结合任务状态、PID 和 `Updated` 时间确认仍在运行。无人登录或用户已注销时不运行。保护器不要求启用休眠。Windows 若先进入睡眠，普通用户后台进程可能暂停；保护器用于处理仍在运行却未睡眠的情况。传感器未知时不会猜测合盖。系统挂死、驱动未报告真实盖子状态或拒绝睡眠时，软件无法保证进入低功耗状态；最多进行三次失败重试，每次至少间隔 60 秒。API 返回成功也不等于已验证进入低功耗睡眠。
 
 ```powershell
 .\Install-Guard.ps1 -Mode Uninstall # 停止保护器、移除登录任务；保留文件和日志
 ```
 
-保护器不更改现有合盖策略。首次安装后，在通风桌面上验证合盖拔供电线、10 秒内重新接电取消、开盖用电池不触发，以及休眠后的恢复。
+保护器不更改现有合盖策略。首次安装后，在通风桌面上验证合盖拔供电线、10 秒内重新接电取消、开盖用电池不触发，以及睡眠后的恢复。
 
 #### 只读诊断
 
@@ -148,9 +148,9 @@ powercfg /sleepstudy /output sleepstudy.html
 
 ### 适用范围
 
-`LidItSleep.ps1` 仅修改活动电源方案的两项合盖动作，不调整电源按键、超时、网络、唤醒设备、BIOS 或安全设置。另行安装的保护器提供后台状态监听和主动休眠请求。
+`LidItSleep.ps1` 仅修改活动电源方案的两项合盖动作，不调整电源按键、超时、网络、唤醒设备、BIOS 或安全设置。另行安装的保护器提供后台状态监听和主动睡眠请求。
 
-保护器监听盖子和供电状态，不识别具体雷电/USB-C 接口，也不依赖外屏状态。仅保存合盖策略无法保证已合盖时拔线触发睡眠。保护器通过单独请求 S4 补足这一行为；实际拔线与恢复仍需在目标设备上验证。组织策略或厂商软件可能覆盖设置或阻止请求。
+保护器监听盖子和供电状态，不识别具体雷电/USB-C 接口，也不依赖外屏状态。仅保存合盖策略无法保证已合盖时拔线触发睡眠。保护器通过单独请求睡眠补足这一行为，不请求 S4；实际拔线与恢复仍需在目标设备上验证。组织策略或厂商软件可能覆盖设置或阻止请求。
 
 ### 测试与验证
 
@@ -158,15 +158,15 @@ powercfg /sleepstudy /output sleepstudy.html
 .\Test-LidItSleep.ps1
 .\Test-Guard.ps1
 .\Build-Guard.ps1
-# 仅观察真实传感器，不发出休眠请求；60 秒后退出
+# 仅观察真实传感器，不发出睡眠请求；60 秒后退出
 .\build\LidItSleep.Guard.exe --observe --seconds 60 --state-dir .\test-output
 ```
 
-20 项原有测试使用虚构事件和模拟电源接口，覆盖事件解释和策略修改。26 项新增保护器测试覆盖拔电源、取消、未知状态、恢复、重试和重复触发抑制。测试不修改真实电源设置，也不请求休眠。
+20 项原有测试使用虚构事件和模拟电源接口，覆盖事件解释和策略修改。30 项新增保护器测试覆盖拔电源、取消、未知状态、恢复、重试和重复触发抑制。测试不修改真实电源设置，也不请求真实睡眠或休眠。
 
 | 验证项目 | 当前结果 |
 | --- | --- |
-| PowerShell 7 测试 | 原有 20 项及保护器 26 项通过 |
+| PowerShell 7 测试 | 原有 20 项及保护器 30 项通过 |
 | Windows PowerShell 5.1 | 语法检查通过；本机执行策略阻止运行，运行兼容性尚待验证 |
 | 实时读取 | 在一台 Windows 11 25H2 设备上通过 |
 | 配置写入与恢复 | 已通过模拟测试，尚未进行真实写入验证 |
@@ -202,7 +202,7 @@ powercfg /sleepstudy /output sleepstudy.html
 - **Policy configuration:** separate lid actions for battery and external power.
 - **Reversible changes:** `-WhatIf` preview, backups, readback verification and rollback on failure.
 - **Event interpretation:** distinguish screen-off, modern standby, hibernation requests, thermal protection and unexpected restarts.
-- **Optional unplug guard:** actively request hibernation after 10 seconds of closed-lid battery operation, without reopening the lid.
+- **Optional unplug guard:** actively request sleep after 10 seconds of closed-lid battery operation, without reopening the lid.
 - **Local operation:** inspection exits after running; the optional guard runs in the background at user logon. No telemetry or network functionality.
 
 ### Requirements
@@ -231,17 +231,17 @@ Sleep states are determined by device firmware and Windows. Modern standby uses 
 
 Builds locally using the Windows .NET Framework 4.x compiler, without dependency downloads. If task registration is denied, run installation in an elevated PowerShell under the same Windows account. The task itself runs with that user's limited privileges, not SYSTEM. Execution policies are not changed. The installer resolves physical file paths to handle packaged-terminal redirection and verifies both task and process startup. Reinstall the guard after removing a terminal app that owns its redirected install directory.
 
-The guard receives Windows lid notifications and checks current power once per second. After **10 continuous seconds on battery with the lid closed**, it runs `shutdown.exe /h` without forcing applications to close. Opening the lid, reconnecting power or unknown sensor values cancels the countdown. Battery use with an open lid and AC use with a closed lid do not trigger it. Starting the guard already closed on battery, or subsequently closing the lid on battery, is also covered.
+The guard receives Windows lid notifications and checks current power once per second. After **10 continuous seconds on battery with the lid closed**, it calls `SetSuspendState(false, false, false)` to request sleep. It does not request hibernation, disable wake events or fall back to hibernation on failure. Opening the lid, reconnecting power or unknown sensor values cancels the countdown. Battery use with an open lid and AC use with a closed lid do not trigger it. Starting the guard already closed on battery, or subsequently closing the lid on battery, is also covered.
 
-External-display state is deliberately excluded because disconnect reporting can lag. Consequently, **closed-lid external-display use on battery also triggers hibernation**. Disconnecting only a video cable while another charger supplies power does not trigger the guard.
+External-display state is deliberately excluded because disconnect reporting can lag. Consequently, **closed-lid external-display use on battery also triggers sleep**. Disconnecting only a video cable while another charger supplies power does not trigger the guard.
 
-Rotating logs: `%LOCALAPPDATA%\LidItSleep\state\guard.log`; live state: `status.txt` in the same folder. Status files remain after exit: verify the task, PID and `Updated` time as well. The guard requires a logged-on user and available S4 hibernation. If Windows sleeps first, it may suspend the user process; the guard does not wake the machine to force S4. It addresses the case where the computer keeps running instead of sleeping. Unknown lid state does not authorize a request. It cannot guarantee S4 entry if Windows hangs, firmware reports incorrect lid state or a request is rejected. Failed requests retry at most three times per interval with at least 60 seconds between attempts. Command acceptance is not proof of completed hibernation.
+Rotating logs: `%LOCALAPPDATA%\LidItSleep\state\guard.log`; live state: `status.txt` in the same folder. Status files remain after exit: verify the task, PID and `Updated` time as well. The guard requires a logged-on user, but does not require hibernation to be enabled. If Windows sleeps first, it may suspend the user process. It addresses the case where the computer keeps running instead of sleeping. Unknown lid state does not authorize a request. It cannot guarantee low-power sleep if Windows hangs, firmware reports incorrect lid state or a request is rejected. Failed requests retry at most three times per interval with at least 60 seconds between attempts. API acceptance is not proof of low-power sleep.
 
 ```powershell
 .\Install-Guard.ps1 -Mode Uninstall # Stop and remove logon task; retain files/logs
 ```
 
-Existing lid policies remain unchanged. First validate closed-lid unplug, reconnecting power within the grace period, open-lid battery use, and resume from hibernation on a ventilated desk.
+Existing lid policies remain unchanged. First validate closed-lid unplug, reconnecting power within the grace period, open-lid battery use, and resume from sleep on a ventilated desk.
 
 #### Read-only diagnostics
 
@@ -333,9 +333,9 @@ Reports may contain device, application and activity information; review and red
 
 ### Scope
 
-`LidItSleep.ps1` changes only the active power plan's two lid-action values. It does not configure power buttons, timeouts, networking, wake devices, BIOS or security settings. The separately installed guard adds background monitoring and explicit hibernation requests.
+`LidItSleep.ps1` changes only the active power plan's two lid-action values. It does not configure power buttons, timeouts, networking, wake devices, BIOS or security settings. The separately installed guard adds background monitoring and explicit sleep requests.
 
-The guard observes lid and power state, not specific Thunderbolt/USB-C ports or display connection state. Stored lid policies alone cannot guarantee sleep after unplugging with an already closed lid; the guard adds a separate S4 request. Actual unplug/resume behavior still requires device-specific validation. Organization policy or vendor utilities may override settings or prevent requests.
+The guard observes lid and power state, not specific Thunderbolt/USB-C ports or display connection state. Stored lid policies alone cannot guarantee sleep after unplugging with an already closed lid; the guard adds a separate sleep request, never S4. Actual unplug/resume behavior still requires device-specific validation. Organization policy or vendor utilities may override settings or prevent requests.
 
 ### Testing and validation
 
@@ -343,15 +343,15 @@ The guard observes lid and power state, not specific Thunderbolt/USB-C ports or 
 .\Test-LidItSleep.ps1
 .\Test-Guard.ps1
 .\Build-Guard.ps1
-# Observe real sensors without requesting hibernation; exit after 60 seconds
+# Observe real sensors without requesting sleep; exit after 60 seconds
 .\build\LidItSleep.Guard.exe --observe --seconds 60 --state-dir .\test-output
 ```
 
-The original 20 tests use synthetic events and mocked power interfaces. Another 26 guard tests cover unplugging, cancellation, unknown sensors, resume, retries and duplicate suppression. Neither suite changes real power settings or requests hibernation.
+The original 20 tests use synthetic events and mocked power interfaces. Another 30 guard tests cover unplugging, cancellation, unknown sensors, resume, retries and duplicate suppression. Neither suite changes real power settings or requests real sleep or hibernation.
 
 | Validation | Current result |
 | --- | --- |
-| PowerShell 7 tests | Original 20 and guard 26 passed |
+| PowerShell 7 tests | Original 20 and guard 30 passed |
 | Windows PowerShell 5.1 | Syntax checks passed; local execution policy blocked runtime testing |
 | Live inspection | Verified on one Windows 11 25H2 device |
 | Configuration writes and restore | Mocked tests passed; real writes have not been verified |
